@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 enigo = "0.1.3" # control the mouse click.
 inputbot = "0.6" # input listener.
+fltk = "^1.4"
