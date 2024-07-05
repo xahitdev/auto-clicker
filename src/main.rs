@@ -1,6 +1,6 @@
 use enigo::{Enigo, MouseButton, MouseControllable};
 use fltk::button;
-use fltk::{app, button::Button, frame::Frame, prelude::*, window::Window};
+use fltk::{app, button::Button, frame::Frame, input::Input, prelude::*, window::Window};
 use inputbot::{KeybdKey::*, *};
 use std::io;
 use std::{
@@ -12,16 +12,20 @@ use std::{
 fn main() {
     let app = app::App::default();
     let mut win = Window::new(300, 300, 400, 300, "Auto-Clicker");
-    let mut CPSLabel = Frame::new(70, 60, 100, 40, "CPS Value");
-    CPSLabel.set_label_size(20);
     let mut cpsSet = Button::new(50, 200, 150, 60, "Set CPS Value");
-    let mut apply = Button::new(210, 200, 150, 60, "RUN");
+    let mut input = Input::new(250, 100, 80, 30, "Enter CPS Value...");
+    cpsSet.set_callback(move |b| {
+        let cps_value: u64 = match input.value().trim().parse() {
+            Ok(num) => num,
+            Err(_) => {
+                fltk::dialog::alert(160, 50, "enter something that is a number");
+                return;
+            }
+        };
+    });
 
     win.end();
     win.show();
-    cpsSet.set_callback(move |b| {
-        win.set_label("merhaba_bomboclaat");
-    });
 
     app.run().unwrap();
 
