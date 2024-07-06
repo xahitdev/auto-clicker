@@ -6,6 +6,7 @@ use std::io;
 use std::{
     sync::atomic::{AtomicBool, Ordering},
     sync::Arc,
+    sync::Mutex,
     thread, time,
 };
 
@@ -14,6 +15,29 @@ fn main() {
     let mut win = Window::new(300, 300, 400, 300, "Auto-Clicker");
     let mut cpsSet = Button::new(50, 200, 150, 60, "Set CPS Value");
     let mut input = Input::new(250, 100, 80, 30, "Enter CPS Value...");
+    let clicker_is_active = Arc::new(AtomicBool::new(false));
+    let clicker_is_active_clone = Arc::clone(&clicker_is_active);
+    let cps_value: u64 = 1000;
+
+    thread::spawn(move || {
+        let mut enigo = Enigo::new();
+        loop {
+            if clicker_is_active_clone.load(Ordering::Relaxed) {
+                enigo.mouse_click(MouseButton::Left);
+                thread::sleep(time::Duration::from_millis(cps_value));
+            }
+        }
+    });
+
+    fltk::dialog::alert(160, 50, "debug");
+
+    F6Key.bind(move || {
+        //callback
+        clicker_is_active.store(
+            !clicker_is_active.load(Ordering::Relaxed),
+            Ordering::Relaxed,
+        )
+    });
     cpsSet.set_callback(move |b| {
         let cps_value: u64 = match input.value().trim().parse() {
             Ok(num) => num,
@@ -28,6 +52,7 @@ fn main() {
     win.show();
 
     app.run().unwrap();
+    handle_input_events();
 
     // println!("Please enter a MS value.. E.g: 90ms = ~11cps...");
     // let mut cps_value = String::new();
