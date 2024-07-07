@@ -1,92 +1,91 @@
 use enigo::{Enigo, MouseButton, MouseControllable};
-use fltk::button;
-use fltk::{app, button::Button, frame::Frame, input::Input, prelude::*, window::Window};
+use fltk::{
+    app,
+    button::Button,
+    enums::{Event, Key},
+    input::Input,
+    prelude::*,
+    window::Window,
+};
 use inputbot::{KeybdKey::*, *};
-use std::io;
 use std::{
-    sync::atomic::{AtomicBool, Ordering},
-    sync::Arc,
-    sync::Mutex,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
     thread, time,
 };
 
 fn main() {
     let app = app::App::default();
-    let mut win = Window::new(300, 300, 400, 300, "Auto-Clicker");
-    let mut cpsSet = Button::new(50, 200, 150, 60, "Set CPS Value");
-    let mut input = Input::new(250, 100, 80, 30, "Enter CPS Value...");
-    let clicker_is_active = Arc::new(AtomicBool::new(false));
-    let clicker_is_active_clone = Arc::clone(&clicker_is_active);
-    let cps_value: u64 = 1000;
+    let mut wind = Window::new(100, 100, 400, 200, "Auto Clicker");
 
+    let mut input = Input::new(160, 50, 80, 30, "Enter MS value:");
+    let mut btn = Button::new(160, 100, 80, 40, "Set Value");
+
+    let clicker_is_active = Arc::new(AtomicBool::new(false));
+    let cps_value = Arc::new(std::sync::Mutex::new(90u64)); // Default value
+
+    let clicker_is_active_clone = Arc::clone(&clicker_is_active);
+    let cps_value_clone = Arc::clone(&cps_value);
+
+    btn.set_callback({
+        let cps_value_clone = Arc::clone(&cps_value);
+        move |_| {
+            let input_value: u64 = match input.value().trim().parse() {
+                Ok(num) => num,
+                Err(_) => {
+                    fltk::dialog::alert(160, 50, "Please insert a NUMBER!");
+                    return;
+                }
+            };
+
+            let mut cps_value_lock = cps_value_clone.lock().unwrap();
+            *cps_value_lock = input_value;
+            println!("Set CPS Value to {} ms", input_value);
+        }
+    });
+
+    // Thread to handle the clicking
+    let clicker_is_active_clone = Arc::clone(&clicker_is_active);
+    let cps_value_clone = Arc::clone(&cps_value);
     thread::spawn(move || {
         let mut enigo = Enigo::new();
         loop {
             if clicker_is_active_clone.load(Ordering::Relaxed) {
+                let cps_value_lock = cps_value_clone.lock().unwrap();
                 enigo.mouse_click(MouseButton::Left);
-                thread::sleep(time::Duration::from_millis(cps_value));
+                thread::sleep(time::Duration::from_millis(*cps_value_lock));
+            } else {
+                thread::sleep(time::Duration::from_millis(100));
             }
         }
     });
-
-    fltk::dialog::alert(160, 50, "debug");
-
-    F6Key.bind(move || {
-        //callback
-        clicker_is_active.store(
-            !clicker_is_active.load(Ordering::Relaxed),
-            Ordering::Relaxed,
-        )
+    wind.handle({
+        let clicker_is_active = Arc::clone(&clicker_is_active);
     });
-    cpsSet.set_callback(move |b| {
-        let cps_value: u64 = match input.value().trim().parse() {
-            Ok(num) => num,
-            Err(_) => {
-                fltk::dialog::alert(160, 50, "enter something that is a number");
-                return;
-            }
-        };
-    });
+    // F6 key event to toggle the clicker
+    // wind.handle({
+    //     let clicker_is_active = Arc::clone(&clicker_is_active);
+    //     move |_, ev| match ev {
+    //         Event::KeyDown => {
+    //             if app::event_key() == Key::F6 {
+    //                 let new_state = !clicker_is_active.load(Ordering::Relaxed);
+    //                 clicker_is_active.store(new_state, Ordering::Relaxed);
+    //                 println!(
+    //                     "Auto-clicker is now {}",
+    //                     if new_state { "ON" } else { "OFF" }
+    //                 );
+    //             }
+    //             true
+    //         }
+    //         _ => false,
+    //     }
+    // });
+    println!("evet abi");
 
-    win.end();
-    win.show();
+    wind.end();
+    wind.show();
 
     app.run().unwrap();
-    handle_input_events();
-
-    // println!("Please enter a MS value.. E.g: 90ms = ~11cps...");
-    // let mut cps_value = String::new();
-
-    // io::stdin()
-    //     .read_line(&mut cps_value)
-    //     .expect("please enter a number");
-
-    // let cps_value: u64 = match cps_value.trim().parse() {
-    //     Ok(num) => num,
-    //     Err(_) => {
-    //         eprintln!("Please insert a NUMBER!");
-    //         return;
-    //     }
-    // };
-
-    // let clicker_is_active = Arc::new(AtomicBool::new(false));
-    // //
-    // let clicker_is_active_clone = Arc::clone(&clicker_is_active);
-    // // cloning clickerisactive for the thread whick will click
-    // thread::spawn(move || {
-    //     let mut enigo = Enigo::new();
-    //     loop {
-    //         if clicker_is_active_clone.load(Ordering::Relaxed) {
-    //             enigo.mouse_click(MouseButton::Left);
-    //             thread::sleep(time::Duration::from_millis(cps_value));
-    //         }
-    //     }
-    // });
-    // F6Key.bind(move || {
-    //     clicker_is_active.store(
-    //         !clicker_is_active.load(Ordering::Relaxed),
-    //         Ordering::Relaxed,
-    //     );
-    // });
-    // handle_input_events();
 }
